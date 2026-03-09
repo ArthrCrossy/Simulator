@@ -12,6 +12,7 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { GraduationCap, Menu, X, User, LogIn } from "lucide-react";
+import {createUser} from "../../services/authService.ts";
 
 interface NavbarProps {
     onStartQuiz?: () => void;
@@ -75,24 +76,12 @@ export function Navbar({ onStartQuiz }: NavbarProps) {
         try {
             setLoadingRegister(true);
 
-            const response = await fetch("http://localhost:3333/user/create", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    name: registerName,
-                    email: registerEmail,
-                    password: registerPassword,
-                    confirmPassword: registerConfirmPassword,
-                }),
+            const data = await createUser({
+                name: registerName,
+                email: registerEmail,
+                password: registerPassword,
+                confirmPassword: registerConfirmPassword,
             });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.message || "Erro ao criar conta.");
-            }
 
             setRegisterSuccess(data.message || "Conta criada com sucesso!");
             setRegisterName("");
