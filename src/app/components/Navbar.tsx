@@ -1,6 +1,13 @@
 import { useState } from "react";
 import { Button } from "./ui/button";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "./ui/dialog";
 import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
@@ -10,9 +17,24 @@ interface NavbarProps {
     onStartQuiz?: () => void;
 }
 
+type AuthTab = "login" | "register";
+
 export function Navbar({ onStartQuiz }: NavbarProps) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const [isLoginOpen, setIsLoginOpen] = useState(false);
+    const [activeTab, setActiveTab] = useState<AuthTab>("login");
+
+    const [registerName, setRegisterName] = useState("");
+    const [registerEmail, setRegisterEmail] = useState("");
+    const [registerPassword, setRegisterPassword] = useState("");
+    const [registerConfirmPassword, setRegisterConfirmPassword] = useState("");
+
+    const [loginEmail, setLoginEmail] = useState("");
+    const [loginPassword, setLoginPassword] = useState("");
+
+    const [loadingRegister, setLoadingRegister] = useState(false);
+    const [registerError, setRegisterError] = useState("");
+    const [registerSuccess, setRegisterSuccess] = useState("");
 
     const scrollToSection = (sectionId: string) => {
         const element = document.getElementById(sectionId);
@@ -22,13 +44,88 @@ export function Navbar({ onStartQuiz }: NavbarProps) {
         }
     };
 
+    const openLoginModal = (tab: AuthTab) => {
+        setActiveTab(tab);
+        setRegisterError("");
+        setRegisterSuccess("");
+        setIsLoginOpen(true);
+    };
+
+    async function handleRegister(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+
+        setRegisterError("");
+        setRegisterSuccess("");
+
+        if (
+            !registerName ||
+            !registerEmail ||
+            !registerPassword ||
+            !registerConfirmPassword
+        ) {
+            setRegisterError("Preencha todos os campos.");
+            return;
+        }
+
+        if (registerPassword !== registerConfirmPassword) {
+            setRegisterError("As senhas não coincidem.");
+            return;
+        }
+
+        try {
+            setLoadingRegister(true);
+
+            const response = await fetch("http://localhost:3333/user/create", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    name: registerName,
+                    email: registerEmail,
+                    password: registerPassword,
+                    confirmPassword: registerConfirmPassword,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.message || "Erro ao criar conta.");
+            }
+
+            setRegisterSuccess(data.message || "Conta criada com sucesso!");
+            setRegisterName("");
+            setRegisterEmail("");
+            setRegisterPassword("");
+            setRegisterConfirmPassword("");
+
+            setTimeout(() => {
+                setIsLoginOpen(false);
+            }, 1500);
+        } catch (error) {
+            const message =
+                error instanceof Error ? error.message : "Erro ao criar conta.";
+            setRegisterError(message);
+        } finally {
+            setLoadingRegister(false);
+        }
+    }
+
+    function handleLogin(event: React.FormEvent<HTMLFormElement>) {
+        event.preventDefault();
+        console.log("Login:", { loginEmail, loginPassword });
+    }
+
     return (
         <>
             <nav className="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-gray-200 shadow-sm">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex justify-between items-center h-16">
-                        {/* Logo */}
-                        <div className="flex items-center gap-2 cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
+                        <div
+                            className="flex items-center gap-2 cursor-pointer"
+                            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                        >
                             <div className="bg-blue-600 p-2 rounded-lg">
                                 <GraduationCap className="w-6 h-6 text-white" />
                             </div>
@@ -37,7 +134,6 @@ export function Navbar({ onStartQuiz }: NavbarProps) {
               </span>
                         </div>
 
-                        {/* Desktop Menu */}
                         <div className="hidden md:flex items-center gap-8">
                             <button
                                 onClick={() => scrollToSection("features")}
@@ -59,104 +155,154 @@ export function Navbar({ onStartQuiz }: NavbarProps) {
                             </button>
                         </div>
 
-                        {/* Desktop Actions */}
                         <div className="hidden md:flex items-center gap-3">
                             <Dialog open={isLoginOpen} onOpenChange={setIsLoginOpen}>
                                 <DialogTrigger asChild>
-                                    <Button variant="ghost">
+                                    <Button variant="ghost" onClick={() => openLoginModal("login")}>
                                         <LogIn className="w-4 h-4 mr-2" />
                                         Entrar
                                     </Button>
                                 </DialogTrigger>
+
                                 <DialogTrigger asChild>
-                                    <Button>
+                                    <Button onClick={() => openLoginModal("register")}>
                                         <User className="w-4 h-4 mr-2" />
                                         Cadastrar-se
                                     </Button>
                                 </DialogTrigger>
+
                                 <DialogContent className="sm:max-w-md">
                                     <DialogHeader>
-                                        <DialogTitle className="text-2xl text-center">Bem-vindo!</DialogTitle>
+                                        <DialogTitle className="text-2xl text-center">
+                                            Bem-vindo!
+                                        </DialogTitle>
                                         <DialogDescription className="text-center">
                                             Entre ou crie sua conta para salvar seu progresso
                                         </DialogDescription>
                                     </DialogHeader>
 
-                                    <Tabs defaultValue="login" className="w-full">
+                                    <Tabs
+                                        value={activeTab}
+                                        onValueChange={(value) => setActiveTab(value as AuthTab)}
+                                        className="w-full"
+                                    >
                                         <TabsList className="grid w-full grid-cols-2">
                                             <TabsTrigger value="login">Entrar</TabsTrigger>
                                             <TabsTrigger value="register">Cadastrar</TabsTrigger>
                                         </TabsList>
 
                                         <TabsContent value="login" className="space-y-4 mt-4">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="login-email">E-mail</Label>
-                                                <Input
-                                                    id="login-email"
-                                                    type="email"
-                                                    placeholder="seu@email.com"
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="login-password">Senha</Label>
-                                                <Input
-                                                    id="login-password"
-                                                    type="password"
-                                                    placeholder="••••••••"
-                                                />
-                                            </div>
-                                            <Button className="w-full" size="lg">
-                                                Entrar
-                                            </Button>
-                                            <p className="text-xs text-center text-gray-600">
-                                                <a href="#" className="text-blue-600 hover:underline">
-                                                    Esqueceu a senha?
-                                                </a>
-                                            </p>
+                                            <form onSubmit={handleLogin} className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="login-email">E-mail</Label>
+                                                    <Input
+                                                        id="login-email"
+                                                        type="email"
+                                                        placeholder="seu@email.com"
+                                                        value={loginEmail}
+                                                        onChange={(e) => setLoginEmail(e.target.value)}
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="login-password">Senha</Label>
+                                                    <Input
+                                                        id="login-password"
+                                                        type="password"
+                                                        placeholder="••••••••"
+                                                        value={loginPassword}
+                                                        onChange={(e) => setLoginPassword(e.target.value)}
+                                                    />
+                                                </div>
+
+                                                <Button className="w-full" size="lg" type="submit">
+                                                    Entrar
+                                                </Button>
+
+                                                <p className="text-xs text-center text-gray-600">
+                                                    <a href="#" className="text-blue-600 hover:underline">
+                                                        Esqueceu a senha?
+                                                    </a>
+                                                </p>
+                                            </form>
                                         </TabsContent>
 
                                         <TabsContent value="register" className="space-y-4 mt-4">
-                                            <div className="space-y-2">
-                                                <Label htmlFor="register-name">Nome completo</Label>
-                                                <Input
-                                                    id="register-name"
-                                                    type="text"
-                                                    placeholder="Seu nome"
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="register-email">E-mail</Label>
-                                                <Input
-                                                    id="register-email"
-                                                    type="email"
-                                                    placeholder="seu@email.com"
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="register-password">Senha</Label>
-                                                <Input
-                                                    id="register-password"
-                                                    type="password"
-                                                    placeholder="••••••••"
-                                                />
-                                            </div>
-                                            <div className="space-y-2">
-                                                <Label htmlFor="register-confirm">Confirmar senha</Label>
-                                                <Input
-                                                    id="register-confirm"
-                                                    type="password"
-                                                    placeholder="••••••••"
-                                                />
-                                            </div>
-                                            <Button className="w-full" size="lg">
-                                                Criar conta
-                                            </Button>
-                                            <p className="text-xs text-center text-gray-600">
-                                                Ao se cadastrar, você aceita nossos{" "}
-                                                <a href="#" className="text-blue-600 hover:underline">
-                                                    Termos de Uso
-                                                </a>
-                                            </p>
+                                            <form onSubmit={handleRegister} className="space-y-4">
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="register-name">Nome completo</Label>
+                                                    <Input
+                                                        id="register-name"
+                                                        type="text"
+                                                        placeholder="Seu nome"
+                                                        value={registerName}
+                                                        onChange={(e) => setRegisterName(e.target.value)}
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="register-email">E-mail</Label>
+                                                    <Input
+                                                        id="register-email"
+                                                        type="email"
+                                                        placeholder="seu@email.com"
+                                                        value={registerEmail}
+                                                        onChange={(e) => setRegisterEmail(e.target.value)}
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="register-password">Senha</Label>
+                                                    <Input
+                                                        id="register-password"
+                                                        type="password"
+                                                        placeholder="••••••••"
+                                                        value={registerPassword}
+                                                        onChange={(e) => setRegisterPassword(e.target.value)}
+                                                    />
+                                                </div>
+
+                                                <div className="space-y-2">
+                                                    <Label htmlFor="register-confirm">Confirmar senha</Label>
+                                                    <Input
+                                                        id="register-confirm"
+                                                        type="password"
+                                                        placeholder="••••••••"
+                                                        value={registerConfirmPassword}
+                                                        onChange={(e) =>
+                                                            setRegisterConfirmPassword(e.target.value)
+                                                        }
+                                                    />
+                                                </div>
+
+                                                {registerError && (
+                                                    <p className="text-sm text-center text-red-600">
+                                                        {registerError}
+                                                    </p>
+                                                )}
+
+                                                {registerSuccess && (
+                                                    <p className="text-sm text-center text-green-600">
+                                                        {registerSuccess}
+                                                    </p>
+                                                )}
+
+                                                <Button
+                                                    className="w-full"
+                                                    size="lg"
+                                                    type="submit"
+                                                    disabled={loadingRegister}
+                                                >
+                                                    {loadingRegister ? "Criando conta..." : "Criar conta"}
+                                                </Button>
+
+                                                <p className="text-xs text-center text-gray-600">
+                                                    Ao se cadastrar, você aceita nossos{" "}
+                                                    <a href="#" className="text-blue-600 hover:underline">
+                                                        Termos de Uso
+                                                    </a>
+                                                </p>
+                                            </form>
                                         </TabsContent>
                                     </Tabs>
 
@@ -193,8 +339,13 @@ export function Navbar({ onStartQuiz }: NavbarProps) {
                                             </svg>
                                             Google
                                         </Button>
+
                                         <Button variant="outline" className="w-full">
-                                            <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                                            <svg
+                                                className="w-5 h-5 mr-2"
+                                                fill="currentColor"
+                                                viewBox="0 0 24 24"
+                                            >
                                                 <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z" />
                                             </svg>
                                             GitHub
@@ -204,7 +355,6 @@ export function Navbar({ onStartQuiz }: NavbarProps) {
                             </Dialog>
                         </div>
 
-                        {/* Mobile Menu Button */}
                         <button
                             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                             className="md:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
@@ -218,7 +368,6 @@ export function Navbar({ onStartQuiz }: NavbarProps) {
                     </div>
                 </div>
 
-                {/* Mobile Menu */}
                 {mobileMenuOpen && (
                     <div className="md:hidden border-t border-gray-200 bg-white">
                         <div className="px-4 py-4 space-y-3">
@@ -228,103 +377,167 @@ export function Navbar({ onStartQuiz }: NavbarProps) {
                             >
                                 Recursos
                             </button>
+
                             <button
                                 onClick={() => scrollToSection("categories")}
                                 className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors font-medium"
                             >
                                 Categorias
                             </button>
+
                             <button
                                 onClick={() => scrollToSection("testimonials")}
                                 className="block w-full text-left px-4 py-2 text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-lg transition-colors font-medium"
                             >
                                 Depoimentos
                             </button>
+
                             <div className="pt-3 border-t border-gray-200 space-y-2">
                                 <Dialog open={isLoginOpen} onOpenChange={setIsLoginOpen}>
                                     <DialogTrigger asChild>
-                                        <Button variant="outline" className="w-full">
+                                        <Button
+                                            variant="outline"
+                                            className="w-full"
+                                            onClick={() => openLoginModal("login")}
+                                        >
                                             <LogIn className="w-4 h-4 mr-2" />
                                             Entrar
                                         </Button>
                                     </DialogTrigger>
+
                                     <DialogContent className="sm:max-w-md">
                                         <DialogHeader>
-                                            <DialogTitle className="text-2xl text-center">Bem-vindo!</DialogTitle>
+                                            <DialogTitle className="text-2xl text-center">
+                                                Bem-vindo!
+                                            </DialogTitle>
                                             <DialogDescription className="text-center">
                                                 Entre ou crie sua conta para salvar seu progresso
                                             </DialogDescription>
                                         </DialogHeader>
 
-                                        <Tabs defaultValue="login" className="w-full">
+                                        <Tabs
+                                            value={activeTab}
+                                            onValueChange={(value) => setActiveTab(value as AuthTab)}
+                                            className="w-full"
+                                        >
                                             <TabsList className="grid w-full grid-cols-2">
                                                 <TabsTrigger value="login">Entrar</TabsTrigger>
                                                 <TabsTrigger value="register">Cadastrar</TabsTrigger>
                                             </TabsList>
 
                                             <TabsContent value="login" className="space-y-4 mt-4">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="mobile-login-email">E-mail</Label>
-                                                    <Input
-                                                        id="mobile-login-email"
-                                                        type="email"
-                                                        placeholder="seu@email.com"
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="mobile-login-password">Senha</Label>
-                                                    <Input
-                                                        id="mobile-login-password"
-                                                        type="password"
-                                                        placeholder="••••••••"
-                                                    />
-                                                </div>
-                                                <Button className="w-full" size="lg">
-                                                    Entrar
-                                                </Button>
-                                                <p className="text-xs text-center text-gray-600">
-                                                    <a href="#" className="text-blue-600 hover:underline">
-                                                        Esqueceu a senha?
-                                                    </a>
-                                                </p>
+                                                <form onSubmit={handleLogin} className="space-y-4">
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="mobile-login-email">E-mail</Label>
+                                                        <Input
+                                                            id="mobile-login-email"
+                                                            type="email"
+                                                            placeholder="seu@email.com"
+                                                            value={loginEmail}
+                                                            onChange={(e) => setLoginEmail(e.target.value)}
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="mobile-login-password">Senha</Label>
+                                                        <Input
+                                                            id="mobile-login-password"
+                                                            type="password"
+                                                            placeholder="••••••••"
+                                                            value={loginPassword}
+                                                            onChange={(e) => setLoginPassword(e.target.value)}
+                                                        />
+                                                    </div>
+
+                                                    <Button className="w-full" size="lg" type="submit">
+                                                        Entrar
+                                                    </Button>
+
+                                                    <p className="text-xs text-center text-gray-600">
+                                                        <a href="#" className="text-blue-600 hover:underline">
+                                                            Esqueceu a senha?
+                                                        </a>
+                                                    </p>
+                                                </form>
                                             </TabsContent>
 
                                             <TabsContent value="register" className="space-y-4 mt-4">
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="mobile-register-name">Nome completo</Label>
-                                                    <Input
-                                                        id="mobile-register-name"
-                                                        type="text"
-                                                        placeholder="Seu nome"
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="mobile-register-email">E-mail</Label>
-                                                    <Input
-                                                        id="mobile-register-email"
-                                                        type="email"
-                                                        placeholder="seu@email.com"
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="mobile-register-password">Senha</Label>
-                                                    <Input
-                                                        id="mobile-register-password"
-                                                        type="password"
-                                                        placeholder="••••••••"
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <Label htmlFor="mobile-register-confirm">Confirmar senha</Label>
-                                                    <Input
-                                                        id="mobile-register-confirm"
-                                                        type="password"
-                                                        placeholder="••••••••"
-                                                    />
-                                                </div>
-                                                <Button className="w-full" size="lg">
-                                                    Criar conta
-                                                </Button>
+                                                <form onSubmit={handleRegister} className="space-y-4">
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="mobile-register-name">
+                                                            Nome completo
+                                                        </Label>
+                                                        <Input
+                                                            id="mobile-register-name"
+                                                            type="text"
+                                                            placeholder="Seu nome"
+                                                            value={registerName}
+                                                            onChange={(e) => setRegisterName(e.target.value)}
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="mobile-register-email">E-mail</Label>
+                                                        <Input
+                                                            id="mobile-register-email"
+                                                            type="email"
+                                                            placeholder="seu@email.com"
+                                                            value={registerEmail}
+                                                            onChange={(e) => setRegisterEmail(e.target.value)}
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="mobile-register-password">
+                                                            Senha
+                                                        </Label>
+                                                        <Input
+                                                            id="mobile-register-password"
+                                                            type="password"
+                                                            placeholder="••••••••"
+                                                            value={registerPassword}
+                                                            onChange={(e) =>
+                                                                setRegisterPassword(e.target.value)
+                                                            }
+                                                        />
+                                                    </div>
+
+                                                    <div className="space-y-2">
+                                                        <Label htmlFor="mobile-register-confirm">
+                                                            Confirmar senha
+                                                        </Label>
+                                                        <Input
+                                                            id="mobile-register-confirm"
+                                                            type="password"
+                                                            placeholder="••••••••"
+                                                            value={registerConfirmPassword}
+                                                            onChange={(e) =>
+                                                                setRegisterConfirmPassword(e.target.value)
+                                                            }
+                                                        />
+                                                    </div>
+
+                                                    {registerError && (
+                                                        <p className="text-sm text-center text-red-600">
+                                                            {registerError}
+                                                        </p>
+                                                    )}
+
+                                                    {registerSuccess && (
+                                                        <p className="text-sm text-center text-green-600">
+                                                            {registerSuccess}
+                                                        </p>
+                                                    )}
+
+                                                    <Button
+                                                        className="w-full"
+                                                        size="lg"
+                                                        type="submit"
+                                                        disabled={loadingRegister}
+                                                    >
+                                                        {loadingRegister ? "Criando conta..." : "Criar conta"}
+                                                    </Button>
+                                                </form>
                                             </TabsContent>
                                         </Tabs>
 
@@ -361,8 +574,13 @@ export function Navbar({ onStartQuiz }: NavbarProps) {
                                                 </svg>
                                                 Google
                                             </Button>
+
                                             <Button variant="outline" className="w-full">
-                                                <svg className="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 24 24">
+                                                <svg
+                                                    className="w-5 h-5 mr-2"
+                                                    fill="currentColor"
+                                                    viewBox="0 0 24 24"
+                                                >
                                                     <path d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.463-1.11-1.463-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.578 9.578 0 0112 6.836c.85.004 1.705.114 2.504.336 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.647.64.699 1.028 1.592 1.028 2.683 0 3.842-2.339 4.687-4.566 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.578.688.48C19.138 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z" />
                                                 </svg>
                                                 GitHub
@@ -371,10 +589,29 @@ export function Navbar({ onStartQuiz }: NavbarProps) {
                                     </DialogContent>
                                 </Dialog>
 
-                                <Button onClick={onStartQuiz} className="w-full">
+                                <Button
+                                    onClick={() => {
+                                        setMobileMenuOpen(false);
+                                        openLoginModal("register");
+                                    }}
+                                    className="w-full"
+                                >
                                     <User className="w-4 h-4 mr-2" />
                                     Cadastrar-se
                                 </Button>
+
+                                {onStartQuiz && (
+                                    <Button
+                                        variant="outline"
+                                        onClick={() => {
+                                            setMobileMenuOpen(false);
+                                            onStartQuiz();
+                                        }}
+                                        className="w-full"
+                                    >
+                                        Iniciar simulado
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     </div>
