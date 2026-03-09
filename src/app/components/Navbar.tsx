@@ -68,6 +68,12 @@ export function Navbar({ onStartQuiz }: NavbarProps) {
                                         Entrar
                                     </Button>
                                 </DialogTrigger>
+                                <DialogTrigger asChild>
+                                    <Button>
+                                        <User className="w-4 h-4 mr-2" />
+                                        Cadastrar-se
+                                    </Button>
+                                </DialogTrigger>
                                 <DialogContent className="sm:max-w-md">
                                     <DialogHeader>
                                         <DialogTitle className="text-2xl text-center">Bem-vindo!</DialogTitle>
@@ -196,11 +202,6 @@ export function Navbar({ onStartQuiz }: NavbarProps) {
                                     </div>
                                 </DialogContent>
                             </Dialog>
-
-                            <Button onClick={onStartQuiz}>
-                                <User className="w-4 h-4 mr-2" />
-                                Cadastrar-se
-                            </Button>
                         </div>
 
                         {/* Mobile Menu Button */}
