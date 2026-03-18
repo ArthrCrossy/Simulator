@@ -12,13 +12,15 @@ import { Input } from "./ui/input";
 import { Label } from "./ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { GraduationCap, Menu, X, User, LogIn } from "lucide-react";
-import {createUser} from "../../services/authService.ts";
+import {createUser, loginUser} from "../../services/authService";
 
 interface NavbarProps {
     onStartQuiz?: () => void;
 }
 
 type AuthTab = "login" | "register";
+
+
 
 export function Navbar({ onStartQuiz }: NavbarProps) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -101,9 +103,29 @@ export function Navbar({ onStartQuiz }: NavbarProps) {
         }
     }
 
-    function handleLogin(event: React.FormEvent<HTMLFormElement>) {
+    async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault();
-        console.log("Login:", { loginEmail, loginPassword });
+
+        try {
+            const data = await loginUser({
+                email: loginEmail,
+                password: loginPassword,
+            });
+
+            if (data.token) {
+                localStorage.setItem("token", data.token);
+            }
+
+            if (data.user) {
+                localStorage.setItem("user", JSON.stringify(data.user));
+            }
+
+            setIsLoginOpen(false);
+
+            onStartQuiz?.();
+        } catch (error) {
+            console.error(error);
+        }
     }
 
     return (

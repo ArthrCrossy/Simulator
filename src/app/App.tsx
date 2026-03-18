@@ -21,7 +21,7 @@ import {
     AlertDialogTitle,
 } from "./components/ui/alert-dialog";
 import { Badge } from "./components/ui/badge";
-import { questions, Question } from "./data/questions";
+import { questions, Question } from "../app/components/data/questions";
 import {
     CheckCircle2,
     XCircle,
